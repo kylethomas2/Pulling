@@ -3,45 +3,79 @@ import numpy as np
 import re
 from requests_html import HTMLSession
 
+#Creating Function to pull posts and fields from inputted Job Page URL
 
 def getFields( web ):
-
+  
   indx = [m.start() for m in re.finditer('\nR\nRecruiter\n', web)]
-
+  
   indx_s = [None] * (len(indx) - 1)
   numPosts = range(0, len(indx) - 1)
   fields = [None] * (len(indx) - 1)
   
   for i in numPosts:
-
+    
     indx_s[i] = [m.start() for m in re.finditer('\n', web[indx[i]:indx[i+1]])]
     indx_s[i] = [x+indx[i] for x in indx_s[i]]
     fields[i] = len(indx_s[i]) - 1
-  
+   
   indx_s[(len(indx) - 2)] = np.append(indx_s[(len(indx) - 2)],indx[len(indx)-1])
   numFields = range(1,max(fields))
-    
+  
   field_string = [['']*max(fields)]*(len(indx)-1)
-
+  
   for i in numPosts:
-
+  
     for j in numFields:
-    
+          
       field_string[i-1][j] =  web[indx_s[i][j]:indx_s[i][j+1]]
       print(field_string[i][j])
-    
+      
   return field_string;
   
-  
+#Declaring empty DataFrame
+
+myvec = [['']*12]*50000
+df = pd.DataFrame(myvec)
+counter = 0
+
+#Passing through URLs and storing in dataframe - ensure to update pageNumber range for desired scope
+
+
 session = HTMLSession()
-pageNumber = range(0,2500)
+pageNumber = range(1,4)
 
 for i in pageNumber:
     
-  if i == 0:
+  if i == 1:
     r = session.get('https://www.clearancejobs.com/jobs')
   else:
-    r = session.get('https://www.clearancejobs.com/jobs?PAGE='+str(i))   
-    
-  r.html.render()
-  print(getFields(r.html.text))
+            
+      try:
+        
+        r = session.get('https://www.clearancejobs.com/jobs?PAGE='+str(i))
+        r.html.render()
+        
+      except (RuntimeError, ValueError, TypeError, IndexError):
+        print('Page Load Failed')
+            
+      try:
+        
+        vectorFields = getFields(r.html.text)
+        numPosts_c = range(0,len(vectorFields))
+        
+        for j in numPosts_c:
+      
+          df_cols = range(0,len(vectorFields[j]))
+          counter = counter + 1
+            
+          for k in df_cols:
+            
+            df.iloc[counter,k] = vectorFields[j][k]
+            
+            
+        
+        
+      except (RuntimeError, ValueError, TypeError, IndexError):
+        print('Field Load Failed')
+        
