@@ -2,80 +2,137 @@ import pandas as pd
 import numpy as np
 import re
 from requests_html import HTMLSession
+import random
 
-#Creating Function to pull posts and fields from inputted Job Page URL
 
-def getFields( web ):
+# Creating Function to pull posts and fields from inputted Job Page URL
+
+def getFields(web):
+  indx_h = [m.start() for m in re.finditer('\nR\nRecruiter\n', web)]
+  indx_h1 = [m.start() for m in re.finditer('\nN\nName HiddenRecruiter\n', web)]
+  indx_h2 = [m.start() for m in re.finditer('\nN\nName Hidden', web)]
+  indx = np.sort(indx_h + indx_h1 + indx_h2)
   
-  indx = [m.start() for m in re.finditer('\nR\nRecruiter\n', web)]
-  
-  indx_s = [None] * (len(indx) - 1)
+  indx_s = [None] * (len(indx) -1)
   numPosts = range(0, len(indx) - 1)
   fields = [None] * (len(indx) - 1)
   
   for i in numPosts:
-    
-    indx_s[i] = [m.start() for m in re.finditer('\n', web[indx[i]:indx[i+1]])]
-    indx_s[i] = [x+indx[i] for x in indx_s[i]]
+    indx_s[i] = [m.start() for m in re.finditer('\n', web[indx[i]:indx[i + 1]])]
+    indx_s[i] = [x + indx[i] for x in indx_s[i]]
     fields[i] = len(indx_s[i]) - 1
-   
-  indx_s[(len(indx) - 2)] = np.append(indx_s[(len(indx) - 2)],indx[len(indx)-1])
-  numFields = range(1,max(fields))
   
-  field_string = [['']*max(fields)]*(len(indx)-1)
+  indx_s[(len(indx) - 2)] = np.append(indx_s[(len(indx) - 2)], indx[len(indx) - 1])
+  numFields = range(1, max(fields))
+  
+  field_string = [[''] * max(fields)] * (len(indx) - 1)
+  df_temp = pd.DataFrame(field_string)
   
   for i in numPosts:
   
+    numFields = range(0, fields[i])
+    
     for j in numFields:
-          
-      field_string[i-1][j] =  web[indx_s[i][j]:indx_s[i][j+1]]
-      print(field_string[i][j])
       
-  return field_string;
+      df_temp.iloc[i,j] = web[indx_s[i][j]:indx_s[i][j + 1]]
+      
   
-#Declaring empty DataFrame
+  return df_temp;
+  
+  
+  # Declaring empty DataFrame
 
-myvec = [['']*12]*50000
-df = pd.DataFrame(myvec)
+myVec = [[''] * 12] * 50000
+df = pd.DataFrame(myVec)
 counter = 0
+df.columns = ['col0', 'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'col8', 'col9', 'col10', 'col11']
 
-#Passing through URLs and storing in dataframe - ensure to update pageNumber range for desired scope
+# Passing through URLs and storing in dataframe - ensure to update pageNumber range for desired scope
+
 
 
 session = HTMLSession()
-pageNumber = range(1,4)
+pageNumber = random.sample(range(1, 2300),20)
 
 for i in pageNumber:
-    
+  
   if i == 1:
+    
+    session = HTMLSession()
     r = session.get('https://www.clearancejobs.com/jobs')
+    
+    r.html.render(timeout=10)
+    vectorFields = getFields(r.html.text)
+    numPosts_c = range(0, vectorFields.shape[0])
+    
+    for j in numPosts_c:
+        
+      df_cols = range(0, vectorFields.shape[1])
+      counter = counter + 1
+                
+      for k in df_cols:
+        df.iloc[counter, k] = vectorFields.iloc[j, k]
+    
   else:
-            
+      
+    try:
+      session = HTMLSession()
+      r = session.get('https://www.clearancejobs.com/jobs?PAGE=' + str(i))
+      r.html.render(timeout=10)
+      vectorFields = getFields(r.html.text)
+      numPosts_c = range(0, vectorFields.shape[0])
+      
+      for j in numPosts_c:
+        
+        df_cols = range(0, vectorFields.shape[1])
+        counter = counter + 1
+                
+        for k in df_cols:
+          df.iloc[counter, k] = vectorFields.iloc[j, k]
+          
+    except (RuntimeError, IndexError):
       try:
-        
-        r = session.get('https://www.clearancejobs.com/jobs?PAGE='+str(i))
-        r.html.render()
-        
-      except (RuntimeError, ValueError, TypeError, IndexError):
-        print('Page Load Failed')
-            
-      try:
-        
+        session = HTMLSession()
+        r = session.get('https://www.clearancejobs.com/jobs?PAGE=' + str(i))
+        r.html.render(timeout=20)
         vectorFields = getFields(r.html.text)
-        numPosts_c = range(0,len(vectorFields))
+        numPosts_c = range(0, vectorFields.shape[0])
         
         for j in numPosts_c:
-      
-          df_cols = range(0,len(vectorFields[j]))
+        
+          df_cols = range(0, vectorFields.shape[1])
           counter = counter + 1
-            
+                
           for k in df_cols:
+            df.iloc[counter, k] = vectorFields.iloc[j, k]
             
-            df.iloc[counter,k] = vectorFields[j][k]
+      except (RuntimeError, IndexError):
+          try:
+            session = HTMLSession()
+            r = session.get('https://www.clearancejobs.com/jobs?PAGE=' + str(i))
+            r.html.render(timeout=30)
+            vectorFields = getFields(r.html.text)
+            numPosts_c = range(0, vectorFields.shape[0])
             
-            
-        
-        
-      except (RuntimeError, ValueError, TypeError, IndexError):
-        print('Field Load Failed')
+            for j in numPosts_c:
+              
+              df_cols = range(0, vectorFields.shape[1])
+              counter = counter + 1
+              
+              for k in df_cols:
+                df.iloc[counter, k] = vectorFields.iloc[j, k]
+                
+          except (RuntimeError, IndexError):
+            print('Page Load Failed')
+    
+
+
+df = df.replace('\n','', regex=True)
+df = df.replace('Apply today! Be one of the first candidates to apply for maximum exposure.','', regex=True)
+df = df.replace('Save JobApply','', regex=True)
+df['col1'] = df['col1'].replace('Name Hidden','', regex=True)
+
+del df['col0']
+
+df.to_csv(r"C:\Users\kylet\OneDrive\Documents\Side Proj\dataset.csv",index=False,header=True)
         
