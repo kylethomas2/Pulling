@@ -4,6 +4,7 @@
 import pandas as pd
 import numpy as np
 import re
+import os
 from requests_html import HTMLSession
 import random
 
@@ -76,6 +77,7 @@ def cleanDF(ph):
       df_m.iloc[j,5] = temp_yoe
       
   
+  df_m = df_m[df_m.Recruiter_Type != '']
   
   return df_m;
 
@@ -92,7 +94,7 @@ df.columns = ['col0', 'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'c
 
 
 session = HTMLSession()
-pageNumber = range(1, 100)
+pageNumber = range(1, 5)
 
 for i in pageNumber:
   
@@ -113,6 +115,8 @@ for i in pageNumber:
       for k in df_cols:
         df.iloc[counter, k] = vectorFields.iloc[j, k]
     
+    os.system("taskkill /f /im chrome.exe > NUL")
+    print(i)
   else:
       
     try:
@@ -129,7 +133,10 @@ for i in pageNumber:
                 
         for k in df_cols:
           df.iloc[counter, k] = vectorFields.iloc[j, k]
-          
+      
+      os.system("taskkill /f /im chrome.exe > NUL")
+      print(i)
+      
     except (RuntimeError, IndexError, TimeoutError):
       try:
         session = HTMLSession()
@@ -145,7 +152,10 @@ for i in pageNumber:
                 
           for k in df_cols:
             df.iloc[counter, k] = vectorFields.iloc[j, k]
-            
+        
+        os.system("taskkill /f /im chrome.exe > NUL")
+        print(i)
+        
       except (RuntimeError, IndexError, TimeoutError):
           try:
             session = HTMLSession()
@@ -161,12 +171,17 @@ for i in pageNumber:
               
               for k in df_cols:
                 df.iloc[counter, k] = vectorFields.iloc[j, k]
-                
+            
+            os.system("taskkill /f /im chrome.exe > NUL")
+            print(i)
+            
           except (RuntimeError, IndexError, TimeoutError):
             print('Page Load Failed')
+            print(i)
     
 
 # Cleaning and storing new dataframe in excel
 
 df_m = cleanDF(df)
 df_m.to_csv(r"C:\Users\kylet\OneDrive\Documents\Side Proj\dataset.csv",index=False,header=True)
+
